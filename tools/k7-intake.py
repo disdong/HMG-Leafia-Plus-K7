@@ -53,7 +53,7 @@ def inspect(leafia, patches=ROOT / 'patches'):
     for line in text.splitlines():
         if line.startswith('prop ') and '=' in line:
             key, value = line[5:].split('=', 1)
-            if key in ('ro.build.product', 'ro.mobis.targetdir', 'ro.build.version.incremental'):
+            if key in ('ro.build.product', 'ro.mobis.targetdir', 'ro.build.version.incremental', 'ro.build.branch'):
                 props[key] = value
         m = HASH_LINE.fullmatch(line)
         if m:
@@ -66,12 +66,20 @@ def inspect(leafia, patches=ROOT / 'patches'):
     targetdir = props.get('ro.mobis.targetdir', '')
     if not targetdir or not re.fullmatch(r'/system/onebin/[A-Za-z0-9_.-]+', targetdir):
         errors.append('Missing or unexpected ro.mobis.targetdir; inspect manually')
-    # The build property must agree with the live report, if both were collected.
+    # HMG can override a brand-wide build.prop product at boot via onebin.
     if regular(stock, 'build.prop'):
         bp = dict(line.split('=', 1) for line in (stock / 'build.prop').read_text(
             encoding='utf-8', errors='replace').splitlines() if '=' in line and not line.startswith('#'))
-        if bp.get('ro.build.product') != product:
-            errors.append('build.prop and public report identify different firmware')
+        static_product = bp.get('ro.build.product', '')
+        if static_product != product:
+            generic = re.fullmatch(r'(?:KIA|HYUNDAI|GENESIS)\.([A-Z]+)\.(.+)', static_product)
+            live = re.fullmatch(r'[A-Za-z0-9_-]+\.([A-Z]+)\.(.+)', product)
+            same_build = all(bp.get(k) and bp[k] == props.get(k) for k in
+                             ('ro.build.version.incremental', 'ro.build.branch'))
+            if generic and live and generic.groups() == live.groups() and same_build:
+                warnings.append('Brand-wide build.prop product overridden at boot; region/version, branch and incremental agree')
+            else:
+                errors.append('build.prop and public report identify different firmware')
     else:
         errors.append('Missing private/stock/build.prop')
     inventory = {}
@@ -107,7 +115,16 @@ def inspect(leafia, patches=ROOT / 'patches'):
         'Do not publish this collection or complete APK builds. Keys/logs were not inspected.',
         'Review installed NEMESIS packages and Wi-Fi driver evidence in public/summary.txt before installing.'
     ]
-    return {'schema': 1, 'collection_complete': not errors, 'install_ready': False,
+    summary = leafia / 'public/summary.txt'
+    summary_text = summary.read_text(encoding='utf-8', errors='replace') if regular(leafia, 'public/summary.txt') else ''
+    adapter_missing = 'wl driver adapter not found' in summary_text
+    interface_present = bool(re.search(r'^wlan[0-9]+\s', summary_text, re.MULTILINE))
+    power_failure = 'failed to power up DHD generic adapter, max retry reached' in summary_text
+    wifi = {'state': 'interface-present' if interface_present else
+            'not-detected' if adapter_missing or power_failure else 'unknown',
+            'wlan_interface_present': interface_present, 'wl_adapter_missing': adapter_missing,
+            'driver_power_failure': power_failure, 'physical_module_presence': 'not-established-by-this-test'}
+    return {'schema': 1, 'collection_complete': not errors, 'install_ready': False, 'wifi': wifi,
             'identity': props, 'stock': inventory, 'reference_candidates': candidates,
             'errors': errors, 'warnings': warnings}
 

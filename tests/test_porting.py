@@ -79,6 +79,29 @@ class CollectionTests(unittest.TestCase):
         (self.stock / 'build.prop').write_text('ro.build.product=OTHER.KOR\n')
         self.assertFalse(self.inspect()['collection_complete'])
 
+    def test_brand_wide_product_with_same_build_is_allowed(self):
+        report = self.report.read_text().replace('prop ro.build.product=',
+            'prop ro.build.branch=fixture-branch\nprop ro.build.version.incremental=fixture-incremental\nprop ro.build.product=')
+        self.report.write_text(report)
+        (self.stock / 'build.prop').write_text('ro.build.product=KIA.KOR.0000.260902\n'
+            'ro.build.branch=fixture-branch\nro.build.version.incremental=fixture-incremental\n')
+        self.assertTrue(self.inspect()['collection_complete'])
+        (self.stock / 'build.prop').write_text('ro.build.product=KIA.KOR.0000.260206\n'
+            'ro.build.branch=fixture-branch\nro.build.version.incremental=fixture-incremental\n')
+        self.assertFalse(self.inspect()['collection_complete'])
+
+    def test_unrelated_generic_firmware_is_not_accepted(self):
+        (self.stock / 'build.prop').write_text('ro.build.product=KIA.KOR.0000.260902\n')
+        self.assertFalse(self.inspect()['collection_complete'])
+
+    def test_missing_wifi_adapter_does_not_claim_physical_absence(self):
+        (self.leafia / 'public/summary.txt').write_text('wl: wl driver adapter not found\n')
+        r = self.inspect()
+        self.assertTrue(r['collection_complete'])
+        self.assertEqual(r['wifi']['state'], 'not-detected')
+        self.assertEqual(r['wifi']['physical_module_presence'], 'not-established-by-this-test')
+        self.assertFalse(r['install_ready'])
+
     def test_truncated_report_is_rejected(self):
         self.report.write_text(self.report.read_text().replace('\nend\n', '\n'))
         self.assertFalse(self.inspect()['collection_complete'])
