@@ -1,3 +1,9 @@
 dist/
 payloads/
 tools/mock/cars.local
+
+# OEM stock, keys, logs and complete builds stay on the developer's machine.
+/private/
+/LEAFIA/
+**/__pycache__/
+*.pyc

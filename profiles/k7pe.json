@@ -1,0 +1,14 @@
+{
+  "variant": "k7pe_kr",
+  "name": "Kia K7 Premier 2020 (Korea)",
+  "head_unit_model": "YGAS.S5BMC.KR",
+  "software_from_owner_screen": "YGPE.KOR.S5W_M.V039.001.260902",
+  "micom_from_owner_screen": "YGPE.KOR.302.260318.MICOM.D",
+  "nemesis_from_owner": "1.15",
+  "wifi_from_owner": "present",
+  "product_prefix": null,
+  "targetdir": null,
+  "status": "awaiting-port-kit",
+  "real_car_leafia_test": false,
+  "kia_connect_after_leafia": "unverified"
+}

@@ -78,6 +78,23 @@ def disasm(apk, out):
         open(d, 'wb').write(zipfile.ZipFile(apk).read('classes.dex'))
         run('baksmali', 'd', d, '-o', out)
 
+def framework_defs(fw, out):
+    """Never treat a failed/empty framework disassembly as a successful check."""
+    odexes = sorted(f for f in os.listdir(fw) if f.endswith('.odex'))
+    if not odexes:
+        sys.exit('STOP: no framework odex files')
+    for f in odexes:
+        dest = os.path.join(out, f[:-5])
+        r = subprocess.run(['baksmali', 'd', '-a', '18', '--allow-odex-opcodes',
+                            os.path.join(fw, f), '-o', dest], capture_output=True, text=True)
+        if r.returncode or 'skipping class' in (r.stdout + r.stderr).lower() or not classes(dest):
+            sys.exit('STOP: framework disassembly failed: ' + f)
+    return defs_of(out)
+
+def assemble(source, dex):
+    # Dalvik field layout on Gen5W, single thread for repeatable dex output.
+    run('smali', 'a', '-j', '1', '--api', '18', source, '-o', dex)
+
 # ---- member-rename mapping (obfuscated names shift between firmwares) ----
 REF = re.compile(r'(L[\w/$]+;)->([\w$<>]+)(\([^)]*\)\S*|:\S+)')
 FIELD_DECL = re.compile(r'^(\.field\s+(?:[\w-]+\s+)*?)([\w$]+)(:\S+)')
@@ -185,7 +202,13 @@ def main():
     ap.add_argument('--work')
     ap.add_argument('--lib-build', help='%s already patched for this car, when its stock one differs' % LIB)
     a = ap.parse_args()
+    if not re.fullmatch(r'[A-Za-z0-9_-]+', a.variant):
+        sys.exit('STOP: invalid variant')
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+', a.prefix) or not a.prefix.endswith('.'):
+        sys.exit('STOP: use an observed product prefix ending in a dot')
     work = a.work or tempfile.mkdtemp(prefix='port-')
+    if os.path.isdir(work) and os.listdir(work):
+        sys.exit('STOP: work directory must be empty; cached classes may belong to another firmware')
     os.makedirs(work, exist_ok=True)
     log('work dir:', work)
 
@@ -201,12 +224,7 @@ def main():
 
     # framework definitions of the new car, for the system-call check
     fwdir = os.path.join(work, 'fw')
-    if not os.path.isdir(fwdir):
-        for f in sorted(os.listdir(a.new_fw)):
-            if f.endswith('.odex'):
-                subprocess.run(['baksmali', 'd', '-a', '18', '--allow-odex-opcodes', os.path.join(a.new_fw, f),
-                                '-o', os.path.join(fwdir, f[:-5])], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    fw_defs = defs_of(fwdir)
+    fw_defs = framework_defs(a.new_fw, fwdir)
 
     report, manual = [], []
     builds = {}
@@ -218,6 +236,10 @@ def main():
             T = os.path.join(work, '%s_%s_build' % (part, n))
             if not os.path.isdir(T): disasm(os.path.join(a.ref_builds, part, files_dir(a.ref_variant), n + '.apk'), T)
             ce, ck, ct = classes(E), classes(K), classes(T)
+            # The automatic merge below handles additions/edits, not deletions.
+            # Keeping a deleted reference class would silently change K's code.
+            if not ce or not ck or not ct or ce - ck or ce - ct:
+                sys.exit('STOP: empty class set or removed reference classes in %s; review manually' % n)
             changed = {c for c in ct if c not in ce or norm_lines(os.path.join(E, c)) != norm_lines(os.path.join(T, c))}
             differs = {c for c in ck if c not in ce or norm_lines(os.path.join(E, c)) != norm_lines(os.path.join(K, c))}
             # rename maps from every differing class that is a pure rename
@@ -281,7 +303,7 @@ def main():
             # same code as the reference: reuse its dex byte for byte
             open(dex, 'wb').write(zipfile.ZipFile(os.path.join(a.ref_builds, part, files_dir(a.ref_variant), n + '.apk')).read('classes.dex'))
         else:
-            run('smali', 'a', '-a', '19', out, '-o', dex)
+            assemble(out, dex)
         run(LPATCH, 'zipadd', os.path.join(a.new_stock, 'app', n + '.apk'), dex, os.path.join(d, n + '.apk'))
     shutil.copy(a.lib_build or os.path.join(a.ref_builds, '2_tbt', files_dir(a.ref_variant), LIB),
                 os.path.join(a.out_builds, '2_tbt', fd, LIB))

@@ -1,5 +1,7 @@
 # HMG Leafia Plus
 
+> **K7 프리미어 포팅 준비:** NEMESIS 1.15 설치 및 Wi-Fi 모듈 확인은 사용자 보고 기준입니다. K7용 패치와 실차 검증은 아직 완료되지 않았습니다. [자료 추출·포팅 절차](docs/K7_PORTING_ko.md) · [소스 검토 기록](docs/K7_SOURCE_REVIEW_ko.md)
+
 [![GitHub에서 후원하기](https://img.shields.io/badge/Sponsor_on_GitHub-%E2%9D%A4-bf3989?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/VysseCodes)
 [![Ko-fi에서 커피 후원하기](https://img.shields.io/badge/Buy_me_a_coffee-Ko--fi-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white)](https://ko-fi.com/vyssecodes)
 
