@@ -1,60 +1,60 @@
-# Patch sets
+# 패치 세트
 
-One folder per car, plus `common/`. The head unit rebuilds the modified projection apps from its own stock files with these (see `packages/wireless-carplay-aa/scripts/build.sh`), so no modified app is shipped.
+차종별 폴더와 공통 폴더인 `common/`으로 구성됩니다. 헤드유닛은 이 패치 세트를 사용해 자체 순정 파일로 수정된 폰 프로젝션 앱을 다시 빌드합니다(`packages/wireless-carplay-aa/scripts/build.sh` 참고). 따라서 수정된 앱 자체는 배포하지 않습니다.
 
-| Folder | Car | Firmware |
+| 폴더 | 차량 | 펌웨어 |
 |---|---|---|
-| `ev6/` | Kia EV6, US (`CVEV.USA.*`) | 260507 |
-| `ev6_ca/` | Kia EV6, Canada (`CVEV.CAN.*`): same code as the US EV6, so its manifest uses the `ev6/` patches on Canada's own APKs | 260206 |
-| `neev/` | Hyundai Ioniq 5, US (`NEEV.USA.*`, `NEEV23.USA.*`) | 260507 |
-| `neev_ca/` | Hyundai Ioniq 5, Canada (`NEEV.CAN.*`): its Android Auto library differs from the US one, so it carries its own library delta | 260206 |
-| `dl3hev/` | Kia K5 Hybrid, Korea: kept, not in `cars` (no Korean unit has shown Wi-Fi hardware) | 260902 |
-| `neev_kr/` | Hyundai Ioniq 5, Korea: kept, not in `cars` (as above) | 260902 |
-| `common/` | `libautoreceiver_infobank.so` for every car with the US stock library (a car with a different one has its own delta in its folder); `optional`: fixes applied wherever the stock file matches | |
+| `ev6/` | 기아 EV6, 미국 사양(`CVEV.USA.*`) | 260507 |
+| `ev6_ca/` | 기아 EV6, 캐나다 사양(`CVEV.CAN.*`). 미국 EV6와 코드가 같으므로, 매니페스트에서 `ev6/` 패치를 지정해 캐나다 사양의 순정 APK에 적용합니다. | 260206 |
+| `neev/` | 현대 아이오닉 5, 미국 사양(`NEEV.USA.*`, `NEEV23.USA.*`) | 260507 |
+| `neev_ca/` | 현대 아이오닉 5, 캐나다 사양(`NEEV.CAN.*`). Android Auto 라이브러리가 미국 사양과 달라 자체 라이브러리 차분 패치를 포함합니다. | 260206 |
+| `dl3hev/` | 기아 K5 하이브리드, 한국 사양. 패치 세트는 보관하지만 `cars`에는 등록하지 않았습니다(지금까지 확인한 한국 헤드유닛에서 Wi-Fi 하드웨어가 발견되지 않음). | 260902 |
+| `neev_kr/` | 현대 아이오닉 5, 한국 사양. 위와 같은 이유로 패치 세트는 보관하지만 `cars`에는 등록하지 않았습니다. | 260902 |
+| `common/` | 미국 사양의 순정 라이브러리와 동일한 파일을 사용하는 모든 차량에 적용할 `libautoreceiver_infobank.so` 패치입니다. 다른 라이브러리를 사용하는 차량은 해당 차종 폴더에 별도 차분 패치를 둡니다. `optional`에는 순정 파일이 일치하는 경우에만 적용하는 수정 사항이 들어 있습니다. | |
 
-`cars` maps a firmware product id prefix (`ro.build.product`) to a folder and a car name. The installer reads it, so adding a car needs no script changes.
+`cars`는 펌웨어의 제품 ID 접두사(`ro.build.product`)를 폴더 및 차량 이름과 연결합니다. 설치 프로그램이 이 파일을 읽으므로, 차량을 추가할 때 스크립트를 수정할 필요는 없습니다.
 
-## Files
+## 파일 구성
 
-- `<App>.tbt.lpd`: rebuilds the turn-by-turn version of the app's code from the stock `<App>.odex`.
-- `<App>.bridge.lpd`: rebuilds the CarPlay-bridge version (turn-by-turn included).
-- `stock`: md5 of each stock file this car must have (`<file name> <md5>`).
-- `manifest`: one line per output: `<part> <app|file> <name> <patch> <md5 of the result>`.
+- `<App>.tbt.lpd`: 순정 `<App>.odex`를 바탕으로 턴바이턴 안내 기능을 추가한 앱 코드를 다시 빌드합니다.
+- `<App>.bridge.lpd`: CarPlay 브리지 기능을 추가한 버전을 다시 빌드합니다. 턴바이턴 안내 기능도 포함합니다.
+- `stock`: 해당 차량에 필요한 각 순정 파일의 MD5 값입니다(`<file name> <md5>`).
+- `manifest`: 출력 결과물마다 한 줄씩 기록합니다. 형식은 `<part> <app|file> <name> <patch> <md5 of the result>`입니다.
 
-An `.lpd` holds the md5 of the exact stock file it needs and of the result. `lpatch delta` writes nothing unless both match.
+`.lpd`에는 패치에 필요한 정확한 순정 파일의 MD5와 패치 결과물의 MD5가 들어 있습니다. `lpatch delta`는 두 값이 모두 일치하는 경우에만 결과물을 기록합니다.
 
-## Adding a car
+## 새 차량 추가
 
-Have the owner run the **port** Leafia kit (`leafia-kit-port.zip`) on the new car and send its `LEAFIA/private` folder privately (`stock/` holds the projection apps and the framework), then:
+새 차량의 소유자에게 **port 버전** Leafia 키트(`leafia-kit-port.zip`)를 실행하고 `LEAFIA/private` 폴더를 비공개로 전달해 달라고 요청합니다. `stock/`에는 폰 프로젝션 앱과 프레임워크가 들어 있습니다. 그런 다음 아래 명령을 실행합니다.
 
 ```
 tools/port.py --variant <name> --prefix <product prefix> --name "<car name>" --new-stock <dir> --new-fw <LEAFIA/private/stock/framework> --ref-stock <EV6 stock dir> --ref-fw <EV6 framework> --ref-builds <builds dir> --out-builds <dir>
 ```
 
-`<dir>` holds the new car's `app/<App>.apk`, `app/<App>.odex` and `lib/libautoreceiver_infobank.so`.
+`<dir>`에는 새 차량의 `app/<App>.apk`, `app/<App>.odex`, `lib/libautoreceiver_infobank.so` 파일이 있어야 합니다.
 
-It compares the new car's apps with the EV6's class by class:
+도구는 새 차량의 앱과 EV6의 앱을 클래스별로 비교합니다.
 
-- Classes that are identical, or that differ but carry none of our changes, are taken as they are.
-- Classes that differ and carry our changes are merged automatically when the difference is only renamed members (obfuscation shifts between firmwares), or when our change applies cleanly as a 3-way patch.
-- Anything else stops the port and is listed for a person to merge.
+- 동일한 클래스나, 서로 다르더라도 이 프로젝트의 수정 사항이 적용되지 않은 클래스는 그대로 사용합니다.
+- 이 프로젝트의 수정 사항이 적용된 클래스가 서로 다른 경우, 차이가 멤버 이름 변경뿐이거나(펌웨어 간 난독화 차이), 수정 사항을 3방향 병합 패치로 충돌 없이 적용할 수 있으면 자동으로 병합합니다.
+- 그 외의 차이는 이식 작업을 중단하고, 사람이 직접 병합할 수 있도록 목록으로 표시합니다.
 
-Every result is then checked: each reference inside the app must resolve, and every system call must exist in the new car's framework. If all checks pass, it writes `patches/<name>/` and adds the car to `cars`. The full builds in `--out-builds` stay private.
+이후 모든 결과물을 검사합니다. 앱 내부의 각 참조가 올바른 대상을 가리켜야 하며, 모든 시스템 호출이 새 차량의 프레임워크에 존재해야 합니다. 검사를 모두 통과하면 `patches/<name>/`을 생성하고 차량을 `cars`에 추가합니다. `--out-builds`에 저장되는 전체 빌드 결과물은 비공개로 유지합니다.
 
-Ported this way, the Ioniq 5 comes out byte for byte identical to its hand-made set, and the K5 Hybrid class for class identical.
+이 방식으로 이식한 아이오닉 5의 결과물은 수작업으로 만든 패치 세트와 바이트 단위로 일치하며, K5 하이브리드의 결과물은 클래스 단위로 일치합니다.
 
-## Optional fixes (`common/optional`)
+## 선택적 수정 사항(`common/optional`)
 
-Fixes that aren't tied to one car's projection apps, listed in `common/optional` in the manifest's line format. The head unit applies each one only when its stock file is the exact one the `.lpd` was made from; otherwise it logs a skip and the install carries on.
+특정 차종의 폰 프로젝션 앱에 종속되지 않는 수정 사항입니다. `common/optional`에 매니페스트와 같은 한 줄 형식으로 나열합니다. 헤드유닛은 순정 파일이 해당 `.lpd`를 만들 때 사용한 파일과 정확히 일치하는 경우에만 수정 사항을 적용합니다. 일치하지 않으면 건너뛰었다는 로그를 남기고 설치를 계속합니다.
 
-- `HKMC_BtSettings.menu.<stock md5 prefix>.lpd` (part `5_menu`), one per stock version of the Bluetooth settings app: with our wireless features on, Settings > Phone Projection would open the wireless projection page, which has no CarPlay split-screen option and lists no phones paired through our bridge. On US/Canada units this keeps it on Device Connections, as on stock US firmware. Make one for a car with `tools/mkmenu.py <stock dir>` (it adds the line here); the unit uses the first line whose stock file it has.
+- `HKMC_BtSettings.menu.<stock md5 prefix>.lpd`(구성 요소 `5_menu`): Bluetooth 설정 앱의 순정 버전별로 하나씩 만듭니다. 이 프로젝트의 무선 기능을 활성화하면 설정 > 폰 프로젝션에서 무선 폰 프로젝션 페이지가 열리는데, 이 페이지에는 CarPlay 분할 화면 옵션이 없고 이 프로젝트의 브리지로 페어링한 휴대전화도 표시되지 않습니다. 이 수정 사항은 미국·캐나다 헤드유닛에서 미국 순정 펌웨어처럼 기기 연결 화면이 열리도록 유지합니다. `tools/mkmenu.py <stock dir>`로 해당 차량용 패치를 만들면 이 목록에 항목이 추가됩니다. 헤드유닛은 보유한 순정 파일과 일치하는 첫 번째 항목을 사용합니다.
 
-## Making a set by hand
+## 수작업으로 패치 세트 만들기
 
-Needs the car's stock files (`app/<name>.apk`, `app/<name>.odex`, `lib/libautoreceiver_infobank.so`), the modified builds in the `2_tbt/<files>` and `3_bridge/<files>` layout, the host `lpatch` (`tools/lpatch/build.sh`) and `pip install --require-hashes -r tools/requirements.txt`:
+차량의 순정 파일(`app/<name>.apk`, `app/<name>.odex`, `lib/libautoreceiver_infobank.so`), `2_tbt/<files>` 및 `3_bridge/<files>` 구조로 배치한 수정 빌드 결과물, 호스트에서 실행할 `lpatch`(`tools/lpatch/build.sh`)가 필요합니다. 또한 `pip install --require-hashes -r tools/requirements.txt`로 의존성을 설치해야 합니다.
 
 ```
 tools/mkpatches.py <ev6|neev|dl3hev> <stock dir> <builds dir> patches
 ```
 
-The installer's stock checksums (`comp/2_tbt`) and expected app checksums (`comp/3_bridge`) must match the new set.
+설치 프로그램의 순정 파일 체크섬(`comp/2_tbt`)과 예상 앱 체크섬(`comp/3_bridge`)은 새 패치 세트와 일치해야 합니다.
